@@ -92,6 +92,51 @@ function paperlesstrans_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_managed
  */
 function paperlesstrans_civicrm_managed(&$entities) {
+  $entities[] = array(
+    'module' => 'com.groupwho.paperlesstrans',
+    'name' => 'PaperlessTrans Credit Card',
+    'entity' => 'PaymentProcessorType',
+    'params' => array(
+      'version' => 3,
+      'name' => 'PaperlessTrans Credit Card',
+      'title' => 'PaperlessTrans Credit Card',
+      'description' => 'PaperlessTrans Payment Processor',
+      'class_name' => 'Payment_PaperlessTrans',
+      'billing_mode' => 'form',
+      'user_name_label' => 'Terminal ID',
+      'password_label' => 'Terminal Key',
+      'url_site_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
+      'url_recur_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
+      'url_site_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
+      'url_recur_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
+      'is_recur' => 1,
+      'payment_type' => 1,
+    ),
+  );
+
+  $entities[] = array(
+    'module' => 'com.groupwho.paperlesstrans',
+    'name' => 'PaperlessTrans ACH/ETF',
+    'entity' => 'PaymentProcessorType',
+    'params' => array(
+      'version' => 3,
+      'name' => 'PaperlessTrans ACH/ETF',
+      'title' => 'PaperlessTrans ACH/ETF',
+      'description' => 'PaperlessTrans Payment Processor',
+      'class_name' => 'Payment_PaperlessTransACH',
+      'billing_mode' => 'form',
+      'user_name_label' => 'Terminal ID',
+      'password_label' => 'Terminal Key',
+      'url_site_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
+      'url_recur_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
+      'url_site_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
+      'url_recur_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
+      'is_recur' => 1,
+      'payment_type' => 2,
+      'payment_instrument_id' => '2',
+    ),
+  );
+
   _paperlesstrans_civix_civicrm_managed($entities);
 }
 

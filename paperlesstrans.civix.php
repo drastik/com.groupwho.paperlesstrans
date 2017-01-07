@@ -195,28 +195,6 @@ function _paperlesstrans_civix_civicrm_managed(&$entities) {
     }
   }
 
-  $entities[] = array(
-    'module' => 'com.groupwho.paperlesstrans',
-    'name' => 'PaperlessTrans',
-    'entity' => 'PaymentProcessorType',
-    'params' => array(
-      'version' => 3,
-      'name' => 'PaperlessTrans',
-      'title' => 'PaperlessTrans',
-      'description' => 'PaperlessTrans Payment Processor',
-      'class_name' => 'Payment_PaperlessTrans',
-      'billing_mode' => 'form',
-      'user_name_label' => 'Terminal ID',
-      'password_label' => 'Terminal Key',
-      'url_site_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
-      'url_recur_default' => 'https://svc.paperlesstrans.com:9999/?wsdl',
-      'url_site_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
-      'url_recur_test_default' => 'http://svc.paperlesstrans.com:8888/?wsdl',
-      'is_recur' => 1,
-      'payment_type' => 1
-    ),
-  );
-
 }
 
 /**
