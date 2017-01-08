@@ -194,7 +194,6 @@ function _paperlesstrans_civix_civicrm_managed(&$entities) {
       $entities[] = $e;
     }
   }
-
 }
 
 /**

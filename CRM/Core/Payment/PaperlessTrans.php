@@ -160,9 +160,9 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       if ($transaction_type == 'ProcessACH') {
         $approval = $run->{$resultFunction}->IsAccepted;
       }
-      elseif ($transaction_type == 'SetupCardSchedule') {
-        $profile_number = $run->{$resultFunction}->ProfileNumber;
-        if (!empty($profile_number)) {
+      elseif ($transaction_type == 'SetupCardSchedule' || $transaction_type == 'CreateCardProfile') {
+        if (!empty($run->{$resultFunction}->ProfileNumber)) {
+          $this->_setParam('pt_profile_number', $run->{$resultFunction}->ProfileNumber);
           $approval = 'True';
         }
       }
@@ -270,6 +270,46 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     return $params;
   }
 
+  public function _createCCProfile() {
+
+  }
+
+  /**
+   * Prepare the fields for recurring subscription requests.
+   *
+   * @param string $profile_number
+   *   May not be used.  The ProfileNumber from PaperlessTrans.
+   *
+   * @return array
+   *   The array of additional SOAP request params.
+   */
+  public function _processRecurFields($profile_number = '') {
+    $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
+
+    $frequency_map = array(
+      '52' => 'Weekly',
+      '26' => 'Semi-Weekly',
+      '24' => 'Bi-Monthly',
+      '12' => 'Monthly',
+      '4' => 'Quarterly',
+      '2' => 'Bi-Annually',
+      '1' => 'Annually',
+    );
+
+    $params = array(
+      'req' => array(
+        // This is for updating existing subscriptions.
+        /*'ProfileNumber' =>  $profile_number,*/
+        'ListingName' =>  $full_name,
+        'Frequency'   =>  '12',                                     //Required Field
+        'StartDateTime' =>  '12/01/2013',                                 //Required Field
+        'EndingDateTime'=>  '12/01/2019',
+        'Memo'      =>  'CiviCRM recurring charge.',
+      ),
+    );
+    return $params;
+  }
+
   /**
    * Map the transaction_type to the property name on the result.
    *
@@ -333,6 +373,12 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // Credit Card transation type.
     $transaction_type = 'processCard';
 
+    // Switch / if for Credit Card vs ACH.
+    $processParams = self::_processCardFields();
+
+    // Merge the defaults with current processParams.
+    $this->_reqParams = array_merge_recursive($defaultParams, $processParams);
+
     // Recurring payments.
     if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
       // Credit Card transation type.
@@ -342,14 +388,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       if (is_a($result, 'CRM_Core_Error')) {
         return $result;
       }
-      return $params;
+      //return $params;
     }
-
-    // Switch / if for Credit Card vs ACH.
-    $processParams = self::_processCardFields();
-
-    // Merge the defaults with current processParams.
-    $this->_reqParams = array_merge_recursive($defaultParams, $processParams);
 
     // @TODO Debugging - remove me.
     CRM_Core_Error::debug_var('this reqParams in DDP', $this->_reqParams);
@@ -359,6 +399,24 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
 
     if (!empty($return['trxn_id'])) {
       $params['trxn_id'] = $return['trxn_id'];
+      // Set contribution status to success.
+      $params['contribution_status_id'] = 1;
+      // Payment success for CiviCRM versions >= 4.6.6.
+      $params['payment_status_id'] = 1;
+
+      if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
+        $query_params = array(
+          1 => array($this->_getParam('pt_profile_number'), 'String'),
+          2 => array($_SERVER['REMOTE_ADDR'], 'String'),
+          3 => array(0, 'Integer'),
+          4 => array($params['contactID'], 'Integer'),
+          5 => array($this->_getParam('email'), 'String'),
+          6 => array($params['contributionRecurID'], 'Integer'),
+        );
+        CRM_Core_DAO::executeQuery("INSERT INTO civicrm_iats_customer_codes
+          (profile_number, ip, is_ach, cid, email, recur_id)
+          VALUES (%1, %2, %3, %4, %5, %6)", $query_params);
+      }
     }
 
     // @TODO Debugging - remove me.
@@ -371,8 +429,15 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    * Create a recurring billing subscription.
    */
   public function doRecurPayment() {
+    // Create a Credit Card Customer Profile.
+    //$profile_number = $this->_createCCProfile();
 
+    // @TODO Create Profile, then get ProfileNumber.
+    $recurParams = self::_processRecurFields();
 
+    // Merge the defaults with current processParams.
+    $currentParams = $this->_reqParams;
+    $this->_reqParams = array_merge_recursive($currentParams, $recurParams);
   }
 
 
@@ -385,7 +450,25 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    * @return bool|object
    */
   public function updateSubscriptionBillingInfo(&$message = '', $params = array()) {
+    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo message', $message);
+    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo All params', $params);
 
+    $dao = CRM_Core_DAO::executeQuery("SELECT cr.payment_processor_id, pt.profile_number, pt.cid
+      FROM civicrm_contribution_recur cr
+      LEFT JOIN civicrm_paperlesstrans_profilenumbers pt ON cr.id = pt.recur_id
+      WHERE cr.id=%1", array(1 => array($params['crid'], 'Int')));
+    $dao->fetch();
+
+    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo dao', $dao);
+
+    /*"ProfileNumber" =>  "1055105",
+    "ListingName" =>  "Jane and Jane Doe",
+    "Frequency"   =>  "12",                                     //Required Field
+    "StartDateTime" =>  "12/01/2013",                                 //Required Field
+    "EndingDateTime"=>  "12/01/2019",
+    "Amount"    =>  "1.00",                                     //Required Field
+    "Currency"    =>  "USD",                                      //Required Field
+    "Memo"      =>  "Membership Fee",*/
     return TRUE;
   }
 
