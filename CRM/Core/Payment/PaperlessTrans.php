@@ -155,8 +155,16 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       $return['trxn_id'] = $run->{$resultFunction}->TransactionID;
 
       // Different propertyName for Card vs ACH processing.
+      // Determine approval per transaction type.
+      $approval = 'False';
       if ($transaction_type == 'ProcessACH') {
         $approval = $run->{$resultFunction}->IsAccepted;
+      }
+      elseif ($transaction_type == 'SetupCardSchedule') {
+        $profile_number = $run->{$resultFunction}->ProfileNumber;
+        if (!empty($profile_number)) {
+          $approval = 'True';
+        }
       }
       else {
         $approval = $run->{$resultFunction}->IsApproved;
@@ -277,6 +285,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       'processCard' => 'ProcessCardResult',
       'RefundCardTransaction' => 'RefundCardTransactionResult',
       'SettleCardAuthorization' => 'SettleCardAuthorizationResult',
+      'SetupCardSchedule' => 'SetupCardScheduleResult',
     );
 
     return $map;
@@ -321,8 +330,20 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // Build defaults for request parameters.
     $defaultParams = $this->_reqParams = self::_buildRequestDefaults();
 
-    // @TODO Determine if they are using Credit Card or ACH.
+    // Credit Card transation type.
     $transaction_type = 'processCard';
+
+    // Recurring payments.
+    if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
+      // Credit Card transation type.
+      $transaction_type = 'SetupCardSchedule';
+
+      $result = $this->doRecurPayment();
+      if (is_a($result, 'CRM_Core_Error')) {
+        return $result;
+      }
+      return $params;
+    }
 
     // Switch / if for Credit Card vs ACH.
     $processParams = self::_processCardFields();
@@ -344,6 +365,28 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     CRM_Core_Error::debug_var('Result in doDirectPayment', $result);
 
     return $params;
+  }
+
+  /**
+   * Create a recurring billing subscription.
+   */
+  public function doRecurPayment() {
+
+
+  }
+
+
+  /**
+   * Update recurring billing subscription.
+   *
+   * @param string $message
+   * @param array $params
+   *
+   * @return bool|object
+   */
+  public function updateSubscriptionBillingInfo(&$message = '', $params = array()) {
+
+    return TRUE;
   }
 
 }
