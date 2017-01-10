@@ -94,13 +94,13 @@ function paperlesstrans_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
 function paperlesstrans_civicrm_managed(&$entities) {
   $entities[] = array(
     'module' => 'com.groupwho.paperlesstrans',
-    'name' => 'PaperlessTrans Credit Card',
+    'name' => 'Paperless Transactions Credit Card',
     'entity' => 'PaymentProcessorType',
     'params' => array(
       'version' => 3,
-      'name' => 'PaperlessTrans Credit Card',
-      'title' => 'PaperlessTrans Credit Card',
-      'description' => 'PaperlessTrans Payment Processor',
+      'name' => 'Paperless Transactions Credit Card',
+      'title' => 'Paperless Transactions Credit Card',
+      'description' => 'Paperless Transactions Payment Processor',
       'class_name' => 'Payment_PaperlessTrans',
       'billing_mode' => 'form',
       'user_name_label' => 'Terminal ID',
@@ -116,13 +116,13 @@ function paperlesstrans_civicrm_managed(&$entities) {
 
   $entities[] = array(
     'module' => 'com.groupwho.paperlesstrans',
-    'name' => 'PaperlessTrans ACH/ETF',
+    'name' => 'Paperless Transactions ACH/ETF',
     'entity' => 'PaymentProcessorType',
     'params' => array(
       'version' => 3,
-      'name' => 'PaperlessTrans ACH/ETF',
-      'title' => 'PaperlessTrans ACH/ETF',
-      'description' => 'PaperlessTrans Payment Processor',
+      'name' => 'Paperless Transactions ACH/ETF',
+      'title' => 'Paperless Transactions ACH/ETF',
+      'description' => 'Paperless Transactions Payment Processor',
       'class_name' => 'Payment_PaperlessTransACH',
       'billing_mode' => 'form',
       'user_name_label' => 'Terminal ID',
