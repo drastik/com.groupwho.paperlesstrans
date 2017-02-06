@@ -397,8 +397,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // Run the SOAP transaction.
     $result = self::_soapTransaction($transaction_type, $this->_reqParams);
 
-    if (!empty($return['trxn_id'])) {
-      $params['trxn_id'] = $return['trxn_id'];
+    if (!empty($result['trxn_id'])) {
+      $params['trxn_id'] = $result['trxn_id'];
       // Set contribution status to success.
       $params['contribution_status_id'] = 1;
       // Payment success for CiviCRM versions >= 4.6.6.
