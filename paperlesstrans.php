@@ -101,7 +101,7 @@ function paperlesstrans_civicrm_managed(&$entities) {
       'name' => 'Paperless Transactions Credit Card',
       'title' => 'Paperless Transactions Credit Card',
       'description' => 'Paperless Transactions Payment Processor',
-      'class_name' => 'Payment_PaperlessTrans',
+      'class_name' => 'Payment_PaperlessTransCC',
       'billing_mode' => 'form',
       'user_name_label' => 'Terminal ID',
       'password_label' => 'Terminal Key',

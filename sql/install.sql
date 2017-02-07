@@ -1,7 +1,7 @@
 
 -- Install SQL for PaperlessTrans extension. Create a table to hold ProfileNumbers.
 
-CREATE TABLE `civicrm_paperlesstrans_profilenumbers` (
+CREATE TABLE IF NOT EXISTS `civicrm_paperlesstrans_profilenumbers` (
   `id` int unsigned NOT NULL AUTO_INCREMENT  COMMENT 'Auto ID',
   `profile_number` varchar(255) NOT NULL COMMENT 'ProfileNumber returned from PaperlessTrans',
   `ip` varchar(255) DEFAULT NULL COMMENT 'Last IP from which this customer code was accessed or created',
