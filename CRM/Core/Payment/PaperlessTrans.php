@@ -296,18 +296,79 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       '1' => 'Annually',
     );
 
+    // I chose once every 2 months for 10 months:
+    // [frequency_interval] => 2
+    // [frequency_unit] => month
+    // [installments] => 10
+
+
+    $frequency_map = array(
+      'Weekly' => '52',
+      'Semi-Weekly' => '26',
+      'Bi-Monthly' => '24',
+      'month' => '12',
+      'Quarterly' => '4',
+      'Bi-Annually' => '2',
+      'Annually' => '1',
+    );
+
+    $frequency = self::_determineFrequency();
+    if (!$frequency) {
+      $error_message = 'Could not determine recurring frequency.  Please try another setting.';
+      CRM_Core_Error::debug_log_message($error_message);
+      echo $error_message . '<p>';
+      return FALSE;
+    }
+
     $params = array(
       'req' => array(
         // This is for updating existing subscriptions.
         /*'ProfileNumber' =>  $profile_number,*/
         'ListingName' =>  $full_name,
-        'Frequency'   =>  '12',                                     //Required Field
+        'Frequency'   =>  $frequency,                                     //Required Field
         'StartDateTime' =>  '12/01/2013',                                 //Required Field
         'EndingDateTime'=>  '12/01/2019',
         'Memo'      =>  'CiviCRM recurring charge.',
       ),
     );
     return $params;
+  }
+
+  public function _determineFrequency() {
+    $frequency = FALSE;
+    // I chose once every 2 months for 10 months:
+    // [frequency_interval] => 2
+    // [frequency_unit] => month
+    // [installments] => 10
+    $frequency_interval = $this->_getParam('frequency_interval');
+    $frequency_unit = $this->_getParam('frequency_unit');
+
+    // interval cannot be less than 7 days or more than 1 year
+    if ($frequency_unit == 'day') {
+      if ($frequency_interval < 7) {
+        return self::error(9001, 'Payment interval must be at least one week.  Daily units are not supported.');
+      }
+    }
+    elseif ($frequency_unit == 'month') {
+      if ($frequency_interval < 1) {
+        return self::error(9001, 'Payment interval must be at least one week.');
+      }
+      elseif ($frequency_interval > 12) {
+        return self::error(9001, 'Payment interval may not be longer than one year.');
+      }
+    }
+
+    $frequency_map = array(
+      'Weekly' => '52',
+      'Semi-Weekly' => '26',
+      'Bi-Monthly' => '24',
+      'month' => '12',
+      'Quarterly' => '4',
+      'Bi-Annually' => '2',
+      'Annually' => '1',
+    );
+
+    return $frequency;
   }
 
   /**

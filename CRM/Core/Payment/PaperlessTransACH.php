@@ -107,10 +107,11 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    *
    * Only those determined by getPaymentFormFields will actually be assigned to the form
    *
+   * CheckNumber field no longer required.  We don't have to do this.
    * @return array
    *   field metadata
    */
-  public function getPaymentFormFieldsMetadata() {
+  /*public function getPaymentFormFieldsMetadata() {
     $array = parent::getPaymentFormFieldsMetadata();
     $array += array(
       'bank_check_number' => array(
@@ -135,14 +136,15 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     );
 
     return $array;
-  }
+  }*/
 
   /**
    * Get array of fields that should be displayed on the payment form for direct debits.
    *
+   * CheckNumber field no longer required.  We don't have to do this.
    * @return array
    */
-  protected function getDirectDebitFormFields() {
+  /*protected function getDirectDebitFormFields() {
     return array(
       'account_holder',
       'bank_account_number',
@@ -150,7 +152,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
       'bank_check_number',
       'bank_name',
     );
-  }
+  }*/
 
   /**
    * Submit the SOAP transaction.
@@ -283,13 +285,12 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    *   The remainder of the SOAP transaction parameters for Credit Cards.
    */
   public function _processACHFields($reqParams = array()) {
-    $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
-    $varType = gettype($this->_getParam('bank_check_number'));
-    CRM_Core_Error::debug_var('TYPE OF VAR CHECK NUMBER:', $varType);
+    //$full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
 
     $params = array(
       'req' => array(
-        'CheckNumber' =>   (int) $this->_getParam('bank_check_number'),
+        // No longer required.
+        //'CheckNumber' =>     $this->_getParam('bank_check_number'),
         'Check'        => array(
           'RoutingNumber' => $this->_getParam('bank_identification_number'),
           'AccountNumber' => $this->_getParam('bank_account_number'),
@@ -323,7 +324,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     return $params;
   }
 
-  public function _createCCProfile() {
+  public function _createACHProfile() {
 
   }
 
@@ -336,7 +337,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    * @return array
    *   The array of additional SOAP request params.
    */
-  public function _processRecurFields($profile_number = '') {
+  /*public function _processRecurFields($profile_number = '') {
     $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
 
     $frequency_map = array(
@@ -352,7 +353,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     $params = array(
       'req' => array(
         // This is for updating existing subscriptions.
-        /*'ProfileNumber' =>  $profile_number,*/
+        // 'ProfileNumber' =>  $profile_number,
         'ListingName' =>  $full_name,
         'Frequency'   =>  '12',                                     //Required Field
         'StartDateTime' =>  '12/01/2013',                                 //Required Field
@@ -361,7 +362,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
       ),
     );
     return $params;
-  }
+  }*/
 
   /**
    * Map the transaction_type to the property name on the result.
@@ -383,24 +384,6 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
 
     return $map;
   }*/
-
-  /**
-   * @param null $errorCode
-   * @param null $errorMessage
-   *
-   * @return object
-   */
-  /*public function &error($errorCode = NULL, $errorMessage = NULL) {
-    $e = CRM_Core_Error::singleton();
-    if ($errorCode) {
-      $e->push($errorCode, 0, array(), $errorMessage);
-    }
-    else {
-      $e->push(9001, 0, array(), 'Unknown System Error.');
-    }
-    return $e;
-  }*/
-
 
   /**
    * Submit a payment.
