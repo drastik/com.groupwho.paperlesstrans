@@ -213,7 +213,8 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
       if ($transaction_type == 'ProcessACH') {
         $approval = $run->{$resultFunction}->IsAccepted;
       }
-      elseif ($transaction_type == 'SetupCardSchedule' || $transaction_type == 'CreateCardProfile') {
+      // If setting up recurring payment or profile, we have different returns.
+      elseif (strstr($transaction_type, 'Setup') || strstr($transaction_type, 'Create')) {
         if (!empty($run->{$resultFunction}->ProfileNumber)) {
           $this->_setParam('pt_profile_number', $run->{$resultFunction}->ProfileNumber);
           $approval = 'True';
