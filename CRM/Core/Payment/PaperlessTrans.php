@@ -124,7 +124,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   public function _soapTransaction($transaction_type = '', $params = array()) {
     // Don't want to assume anything here.  Must be passed.
     if (empty($transaction_type)) {
-      return self::error(1, 'No $transaction_type passed to _soapTransaction!');
+      $return['error'] = self::error(1, 'No $transaction_type passed to _soapTransaction!');
+      return $return;
     }
 
     // Passing $params to this function may be useful later.
@@ -160,7 +161,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       if ($transaction_type == 'ProcessACH') {
         $approval = $run->{$resultFunction}->IsAccepted;
       }
-      elseif ($transaction_type == 'SetupCardSchedule' || $transaction_type == 'CreateCardProfile') {
+      // If setting up recurring payment or profile, we have different returns.
+      elseif (strstr($transaction_type, 'Setup') || strstr($transaction_type, 'Create')) {
         if (!empty($run->{$resultFunction}->ProfileNumber)) {
           $this->_setParam('pt_profile_number', $run->{$resultFunction}->ProfileNumber);
           $approval = 'True';
@@ -179,7 +181,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     }
     else {
       // Error message.
-      return self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
+      $return['error'] = self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
     }
 
     return $return;
