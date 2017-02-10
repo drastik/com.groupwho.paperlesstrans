@@ -46,7 +46,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    * @return string
    *   the error message if any
    */
-  public function checkConfig() {
+  /*public function checkConfig() {
     $error = array();
     if (empty($this->_paymentProcessor['user_name'])) {
       $error[] = ts('APILogin is not set for this payment processor');
@@ -62,7 +62,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     else {
       return NULL;
     }
-  }
+  }*/
 
   /**
    * Set a field to the specified value.  Value must be a scalar (int,
