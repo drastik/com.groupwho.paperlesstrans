@@ -136,7 +136,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    *
    * @return [type]                   [description]
    */
-  public function _soapTransaction($transaction_type = '', $params = array()) {
+  /*public function _soapTransaction($transaction_type = '', $params = array()) {
     // Don't want to assume anything here.  Must be passed.
     if (empty($transaction_type)) {
       $return['error'] = self::error(1, 'No $transaction_type passed to _soapTransaction!');
@@ -200,7 +200,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     }
 
     return $return;
-  }
+  }*/
 
 
   /**

@@ -8,7 +8,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   protected $_reqParams = array();
   protected $_islive = NULL;
   protected $_isTestString = 'False';
-  protected $ptDateFormat = 'm/d/Y';
+  protected $_ptDateFormat = 'm/d/Y';
 
   /**
    * We only need one instance of this object. So we use the singleton
@@ -340,7 +340,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
         //'ProfileNumber' =>  $profile_number,
         'ListingName' =>  $full_name,
         'Frequency'   =>  $frequency,                                     //Required Field
-        'StartDateTime' =>  date($ptDateFormat),                                 //Required Field
+        'StartDateTime' =>  date($this->_ptDateFormat),                                 //Required Field
         'Memo'      =>  'CiviCRM recurring charge.',
       ),
     );
@@ -349,7 +349,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     if (!empty($this->_getParam('installments'))) {
       $installments = $this->_getParam('installments');
       $endTime = strtotime("+{$installments} {$frequency_unit}");
-      $endDate = date($ptDateFormat, $endTime);
+      $endDate = date($this->_ptDateFormat, $endTime);
       // Now set the soap call parameter.
       $params['req']['EndingDateTime'] = $endDate;
     }
@@ -411,6 +411,9 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       'RefundCardTransaction' => 'RefundCardTransactionResult',
       'SettleCardAuthorization' => 'SettleCardAuthorizationResult',
       'SetupCardSchedule' => 'SetupCardScheduleResult',
+      'SetupACHSchedule' => 'SetupACHScheduleResult',
+      'UpdateCardSchedule' => 'UpdateCardScheduleResult',
+      'UpdateACHSchedule' => 'UpdateACHScheduleResult',
     );
 
     return $map;
