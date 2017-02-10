@@ -8,6 +8,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   protected $_reqParams = array();
   protected $_islive = NULL;
   protected $_isTestString = 'False';
+  protected $ptDateFormat = 'm/d/Y';
 
   /**
    * We only need one instance of this object. So we use the singleton
@@ -278,6 +279,15 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   /**
    * Prepare the fields for recurring subscription requests.
    *
+   * Paperless's frequency map:
+   * - '52' => 'Weekly'
+   * - '26' => 'Semi-Weekly'
+   * - '24' => 'Bi-Monthly'
+   * - '12' => 'Monthly'
+   * - '4'  => 'Quarterl'
+   * - '2'  => 'Bi-Annualy'
+   * - '1'  => 'Annually'
+   *
    * @param string $profile_number
    *   May not be used.  The ProfileNumber from PaperlessTrans.
    *
@@ -287,55 +297,68 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   public function _processRecurFields($profile_number = '') {
     $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
 
-    $frequency_map = array(
-      '52' => 'Weekly',
-      '26' => 'Semi-Weekly',
-      '24' => 'Bi-Monthly',
-      '12' => 'Monthly',
-      '4' => 'Quarterly',
-      '2' => 'Bi-Annually',
-      '1' => 'Annually',
-    );
-
     // I chose once every 2 months for 10 months:
     // [frequency_interval] => 2
     // [frequency_unit] => month
     // [installments] => 10
-
+    $frequency_unit = $this->_getParam('frequency_unit');
 
     $frequency_map = array(
-      'Weekly' => '52',
-      'Semi-Weekly' => '26',
-      'Bi-Monthly' => '24',
+      'week' => '52',
+      //'Semi-Weekly' => '26',
+      //'Bi-Monthly' => '24',
       'month' => '12',
-      'Quarterly' => '4',
-      'Bi-Annually' => '2',
-      'Annually' => '1',
+      //'Quarterly' => '4',
+      //'Bi-Annually' => '2',
+      'year' => '1',
     );
 
-    $frequency = self::_determineFrequency();
-    if (!$frequency) {
+    // Map CiviCRM's frequency name to Paperless's.
+    if (!empty($frequency_map[$frequency_unit])) {
+      $frequency = $frequency_map[$frequency_unit];
+    }
+    else {
       $error_message = 'Could not determine recurring frequency.  Please try another setting.';
       CRM_Core_Error::debug_log_message($error_message);
       echo $error_message . '<p>';
       return FALSE;
     }
 
+    // No longer required because we block installment setting.  Too many issues.
+    //$frequency = self::_determineFrequency();
+    /*if (!$frequency) {
+      $error_message = 'Could not determine recurring frequency.  Please try another setting.';
+      CRM_Core_Error::debug_log_message($error_message);
+      echo $error_message . '<p>';
+      return FALSE;
+    }*/
+
+    // Set up the soap call parameters for recurring.
     $params = array(
       'req' => array(
         // This is for updating existing subscriptions.
-        /*'ProfileNumber' =>  $profile_number,*/
+        //'ProfileNumber' =>  $profile_number,
         'ListingName' =>  $full_name,
         'Frequency'   =>  $frequency,                                     //Required Field
-        'StartDateTime' =>  '12/01/2013',                                 //Required Field
-        'EndingDateTime'=>  '12/01/2019',
+        'StartDateTime' =>  date($ptDateFormat),                                 //Required Field
         'Memo'      =>  'CiviCRM recurring charge.',
       ),
     );
+
+    // If they set a limit to the number of installments (end date).
+    if (!empty($this->_getParam('installments'))) {
+      $installments = $this->_getParam('installments');
+      $endTime = strtotime("+{$installments} {$frequency_unit}");
+      $endDate = date($ptDateFormat, $endTime);
+      // Now set the soap call parameter.
+      $params['req']['EndingDateTime'] = $endDate;
+    }
+
     return $params;
   }
 
-  public function _determineFrequency() {
+  // No longer required because we block installment setting.  Too many issues.
+  /*public function _determineFrequency() {
     $frequency = FALSE;
     // I chose once every 2 months for 10 months:
     // [frequency_interval] => 2
@@ -370,7 +393,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     );
 
     return $frequency;
-  }
+  }*/
 
   /**
    * Map the transaction_type to the property name on the result.
@@ -447,9 +470,6 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       $transaction_type = 'SetupCardSchedule';
 
       $result = $this->doRecurPayment();
-      if (is_a($result, 'CRM_Core_Error')) {
-        return $result;
-      }
       //return $params;
     }
 
@@ -458,6 +478,17 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
 
     // Run the SOAP transaction.
     $result = self::_soapTransaction($transaction_type, $this->_reqParams);
+
+    // Handle errors.
+    if (is_a($result, 'CRM_Core_Error') || !empty($result['error'])) {
+      $error_message = 'There was an error with the transaction.  Please check logs: ';
+      echo $error_message . '<p>';
+      if (!empty($result['error'])) {
+        $error_message .= $result['error'];
+      }
+      CRM_Core_Error::debug_log_message($error_message);
+      return FALSE;
+    }
 
     if (!empty($result['trxn_id'])) {
       $params['trxn_id'] = $result['trxn_id'];

@@ -3,9 +3,9 @@
 class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans {
 
   protected $_mode = NULL;
-  protected $_params = array();
-  protected $_resultFunctionsMap = array();
-  protected $_reqParams = array();
+  //protected $_params = array();
+  //protected $_resultFunctionsMap = array();
+  //protected $_reqParams = array();
   protected $_islive = NULL;
   protected $_isTestString = 'False';
 
