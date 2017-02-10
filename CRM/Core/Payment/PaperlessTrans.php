@@ -30,17 +30,16 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    */
   public function __construct($mode, &$paymentProcessor) {
     $this->_mode = $mode;
-    $this->_islive = ($mode == 'live' ? TRUE : FALSE);
+    //$this->_islive = ($mode == 'live' ? TRUE : FALSE);
     // Final version because Paperless wants a string.
-    $this->_isTestString = ($mode == 'test' ? 'True' : 'False');
+    //$this->_isTestString = ($mode == 'test' ? 'True' : 'False');
     $this->_paymentProcessor = $paymentProcessor;
     $this->_processorName = ts('PaperlessTrans');
     // Array of the result function names by Soap request function name.
-    $this->_resultFunctionsMap = self::_mapResultFunctions();
+    //$this->_resultFunctionsMap = self::_mapResultFunctions();
 
     // Get merchant data from config.
     $config = CRM_Core_Config::singleton();
-
   }
 
   /**
@@ -148,11 +147,11 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // Get the property name of this transaction_type's result.
     $resultFunction = $this->_resultFunctionsMap[$transaction_type];
 
-    $return['dateTimeStamp'] = $run->{$resultFunction}->DateTimeStamp;
+    //$return['dateTimeStamp'] = $run->{$resultFunction}->DateTimeStamp;
     $return['ResponseCode'] = $run->{$resultFunction}->ResponseCode;
 
     // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('SOAP resultFunction', $run->{$resultFunction});
+    CRM_Core_Error::debug_var('Paperless SOAP resultFunction', $run->{$resultFunction});
 
     if ($run->{$resultFunction}->ResponseCode == 0) {
       $this->_setParam('trxn_id', $run->{$resultFunction}->TransactionID);
@@ -228,58 +227,6 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
 
 
   /**
-   * Generate the remainder of SOAP request array for processing Credit Cards.
-   *
-   * @param array &$reqParams
-   *   @todo  Might not use this! @TODO
-   *
-   * @return array
-   *   The remainder of the SOAP transaction parameters for Credit Cards.
-   */
-  public function _processCardFields($reqParams = array()) {
-    $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
-
-    $params = array(
-      'req' => array(
-        'Card'        => array(
-          'CardNumber'  => $this->_getParam('credit_card_number'),                  //Required Field
-          'ExpirationMonth' => $this->_getParam('month'),                        //Required Field
-          'ExpirationYear'=> $this->_getParam('year'),
-          'SecurityCode'  => $this->_getParam('cvv2'),
-          'NameOnAccount' => $full_name,                   //Required Field
-          'Address'   => array(
-            'Street'  =>  $this->_getParam('street_address'),     //Required Field
-            'City'    =>  $this->_getParam('city'),         //Required Field
-            'State'   =>  $this->_getParam('state_province'),           //Required Field
-            'Zip'     =>  $this->_getParam('postal_code'),          //Required Field
-            'Country' =>  $this->_getParam('country'),
-          ),            //Required Field
-          /*'Identification'=> array(
-            'IDType'  =>  '1',
-            'State'   =>  'TX',
-            'Number'  =>  '12345678',
-            'Expiration'=>  '12/31/2012',
-            'DOB'   =>  '12/31/1956',
-            'Address' => array(
-              'Street'  =>  '1234 Main Street',
-              'City'    =>  'Anytown',
-              'State'   =>  'TX',
-              'Zip'   =>  '99999',
-              'Country' =>  'US',
-            ),
-          ),*/
-        ),
-      ),
-    );
-
-    return $params;
-  }
-
-  public function _createCCProfile() {
-
-  }
-
-  /**
    * Prepare the fields for recurring subscription requests.
    *
    * Paperless's frequency map:
@@ -300,7 +247,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   public function _processRecurFields($profile_number = '') {
     $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
 
-    // I chose once every 2 months for 10 months:
+    // Example: I chose once every 2 months for 10 months:
     // [frequency_interval] => 2
     // [frequency_unit] => month
     // [installments] => 10
@@ -342,8 +289,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
         // This is for updating existing subscriptions.
         //'ProfileNumber' =>  $profile_number,
         'ListingName' =>  $full_name,
-        'Frequency'   =>  $frequency,                                     //Required Field
-        'StartDateTime' =>  date($this->_ptDateFormat),                                 //Required Field
+        'Frequency'   =>  $frequency,
+        'StartDateTime' =>  date($this->_ptDateFormat),
         'Memo'      =>  'CiviCRM recurring charge.',
       ),
     );
@@ -453,26 +400,11 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    *   The result in a nice formatted array (or an error object).
    */
   public function doDirectPayment(&$params) {
-    // Set params in our own storage.
-    /*foreach ($params as $field => $value) {
-      $this->_setParam($field, $value);
-    }*/
-
     // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('All params IN PARENT', $params);
-
-    // Build defaults for request parameters.
-    //$defaultParams = $this->_reqParams = self::_buildRequestDefaults();
+    //CRM_Core_Error::debug_var('All params', $params);
 
     // Transaction type.
     $transaction_type = $this->_transactionType;
-    CRM_Core_Error::debug_var('Transaction Type', $transaction_type);
-
-    // Switch / if for Credit Card vs ACH.
-    //$processParams = self::_processCardFields();
-
-    // Merge the defaults with current processParams.
-    //$this->_reqParams = array_merge_recursive($defaultParams, $processParams);
 
     // Recurring payments.
     if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
@@ -480,11 +412,10 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       $transaction_type = $this->_transactionTypeRecur;
 
       $result = $this->doRecurPayment();
-      //return $params;
     }
 
     // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('this reqParams in DDP', $this->_reqParams);
+    //CRM_Core_Error::debug_var('this reqParams in DDP', $this->_reqParams);
 
     // Run the SOAP transaction.
     $result = self::_soapTransaction($transaction_type, $this->_reqParams);
@@ -523,15 +454,9 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       }
     }
 
-    // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('Result in doDirectPayment', $result);
-
     return $params;
   }
 
-  public function _process_doDirectPayment(&$params) {
-
-  }
 
   /**
    * Create a recurring billing subscription.
@@ -541,6 +466,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     //$profile_number = $this->_createCCProfile();
 
     // @TODO Create Profile, then get ProfileNumber.
+    // A profile is created with scheduled payments.  Do we need to look up and
+    // match for new schedules created by the same person/profile?
     $recurParams = self::_processRecurFields();
 
     // Merge the defaults with current processParams.

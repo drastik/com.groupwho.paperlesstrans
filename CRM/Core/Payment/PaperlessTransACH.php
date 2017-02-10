@@ -22,8 +22,13 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    */
   public function __construct($mode, &$paymentProcessor) {
     $this->_mode = $mode;
+    $this->_islive = ($mode == 'live' ? TRUE : FALSE);
+    // Final version because Paperless wants a string.
+    $this->_isTestString = ($mode == 'test' ? 'True' : 'False');
     $this->_paymentProcessor = $paymentProcessor;
     $this->_processorName = ts('PaperlessTrans');
+    // Array of the result function names by Soap request function name.
+    $this->_resultFunctionsMap = self::_mapResultFunctions();
     // Set transaction type for Soap call.
     $this->_transactionType = 'ProcessACH';
     $this->_transactionTypeRecur = 'SetupACHSchedule';
@@ -106,14 +111,13 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
           'RoutingNumber' => $this->_getParam('bank_identification_number'),
           'AccountNumber' => $this->_getParam('bank_account_number'),
           'NameOnAccount' => $this->_getParam('account_holder'),
-          //'NameOnAccount' => $full_name,
           'Address'   => array(
-            'Street'  =>  $this->_getParam('street_address'),     //Required Field
-            'City'    =>  $this->_getParam('city'),         //Required Field
-            'State'   =>  $this->_getParam('state_province'),           //Required Field
-            'Zip'     =>  $this->_getParam('postal_code'),          //Required Field
+            'Street'  =>  $this->_getParam('street_address'),
+            'City'    =>  $this->_getParam('city'),
+            'State'   =>  $this->_getParam('state_province'),
+            'Zip'     =>  $this->_getParam('postal_code'),
             'Country' =>  $this->_getParam('country'),
-          ),            //Required Field
+          ),
           /*'Identification'=> array(
             'IDType'  =>  '1',
             'State'   =>  'TX',
@@ -158,7 +162,7 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     // Build defaults for request parameters.
     $defaultParams = $this->_reqParams = self::_buildRequestDefaults();
 
-    // Switch / if for Credit Card vs ACH.
+    // Switch for Credit Card vs ACH.
     $processParams = self::_processACHFields();
 
     // Merge the defaults with current processParams.
