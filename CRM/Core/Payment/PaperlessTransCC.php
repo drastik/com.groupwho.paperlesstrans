@@ -64,43 +64,6 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
     }
   }*/
 
-  /**
-   * Set a field to the specified value.  Value must be a scalar (int,
-   * float, string, or boolean).
-   *
-   * @param string $field
-   * @param mixed $value
-   *
-   * @return bool
-   *   false if value is not a scalar, true if successful
-   */
-  public function _setParam($field, $value) {
-    if (!is_scalar($value)) {
-      return FALSE;
-    }
-    else {
-      $this->_params[$field] = $value;
-    }
-  }
-
-  /**
-   * Get the value of a field if set.
-   *
-   * @param string $field
-   *   The field.
-   *
-   * @return mixed
-   *   value of the field, or empty string if the field is
-   *   not set
-   */
-  public function _getParam($field) {
-    if (isset($this->_params[$field])) {
-      return $this->_params[$field];
-    }
-    else {
-      return '';
-    }
-  }
 
   /**
    * Submit the SOAP transaction.
@@ -185,42 +148,6 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
     return $return;
   }
 
-  /**
-   * Build the default array to send to PaperlessTrans.
-   *
-   * @return array
-   *   The scaffolding for the SOAP transaction parameters.
-   */
-  public function _buildRequestDefaults() {
-    $defaults = array(
-      'req' => array(
-        'Token' => array(
-          'TerminalID' => $this->_paymentProcessor['user_name'],
-          'TerminalKey' =>  $this->_paymentProcessor['password'],
-        ),
-        'TestMode'    =>  $this->_isTestString,
-        'Currency'    =>  $this->_getParam('currencyID'),
-        'Amount'      =>  $this->_getParam('amount'),
-        'CardPresent' =>  'False',
-        // I think these have to be configured in the gateway account.
-        'CustomFields'  => array(
-          'Field_1' =>  'InvoiceID: ' . $this->_getParam('invoiceID'),
-          'Field_2' =>  'IP Addr: ' . $this->_getParam('ip_address'),
-          /*'Field_3' =>  '',
-          'Field_4' =>  '',
-          'Field_5' =>  '',
-          'Field_6' =>  '',
-          'Field_7' =>  '',
-          'Field_8' =>  '',
-          'Field_9' =>  '',
-          'Field_10'  =>  '',*/
-        ),
-      ),
-    );
-
-    return $defaults;
-  }
-
 
   /**
    * Generate the remainder of SOAP request array for processing Credit Cards.
@@ -236,6 +163,7 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
 
     $params = array(
       'req' => array(
+        'CardPresent' =>  'False',
         'Card'        => array(
           'CardNumber'  => $this->_getParam('credit_card_number'),                  //Required Field
           'ExpirationMonth' => $this->_getParam('month'),                        //Required Field
@@ -283,7 +211,7 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
    * @return array
    *   The array of additional SOAP request params.
    */
-  public function _processRecurFields($profile_number = '') {
+  /*public function _processRecurFields($profile_number = '') {
     $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
 
     $frequency_map = array(
@@ -299,7 +227,7 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
     $params = array(
       'req' => array(
         // This is for updating existing subscriptions.
-        /*'ProfileNumber' =>  $profile_number,*/
+        // 'ProfileNumber' =>  $profile_number,
         'ListingName' =>  $full_name,
         'Frequency'   =>  '12',                                     //Required Field
         'StartDateTime' =>  '12/01/2013',                                 //Required Field
@@ -308,45 +236,7 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
       ),
     );
     return $params;
-  }
-
-  /**
-   * Map the transaction_type to the property name on the result.
-   *
-   * @return array
-   *   Array of transaction_type => resultPropertyName.
-   */
-  public function _mapResultFunctions() {
-    $map = array(
-      'CreateACHProfile' => 'CreateACHProfileResult',
-      'CreateCardProfile' => 'CreateCardProfileResult',
-      'ProcessACH' => 'ProcessACHResult',
-      'AuthorizeCard' => 'AuthorizeCardResult',
-      'processCard' => 'ProcessCardResult',
-      'RefundCardTransaction' => 'RefundCardTransactionResult',
-      'SettleCardAuthorization' => 'SettleCardAuthorizationResult',
-      'SetupCardSchedule' => 'SetupCardScheduleResult',
-    );
-
-    return $map;
-  }
-
-  /**
-   * @param null $errorCode
-   * @param null $errorMessage
-   *
-   * @return object
-   */
-  public function &error($errorCode = NULL, $errorMessage = NULL) {
-    $e = CRM_Core_Error::singleton();
-    if ($errorCode) {
-      $e->push($errorCode, 0, array(), $errorMessage);
-    }
-    else {
-      $e->push(9001, 0, array(), 'Unknown System Error.');
-    }
-    return $e;
-  }
+  }*/
 
 
   /**

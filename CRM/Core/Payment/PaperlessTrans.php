@@ -203,8 +203,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
         'TestMode'    =>  $this->_isTestString,
         'Currency'    =>  $this->_getParam('currencyID'),
         'Amount'      =>  $this->_getParam('amount'),
-        'CardPresent' =>  'False',
-        // I think these have to be configured in the gateway account.
+        // These have to be configured in the gateway account as well.
         'CustomFields'  => array(
           'Field_1' =>  'InvoiceID: ' . $this->_getParam('invoiceID'),
           'Field_2' =>  'IP Addr: ' . $this->_getParam('ip_address'),

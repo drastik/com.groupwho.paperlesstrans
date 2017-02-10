@@ -64,43 +64,6 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     }
   }*/
 
-  /**
-   * Set a field to the specified value.  Value must be a scalar (int,
-   * float, string, or boolean).
-   *
-   * @param string $field
-   * @param mixed $value
-   *
-   * @return bool
-   *   false if value is not a scalar, true if successful
-   */
-  /*public function _setParam($field, $value) {
-    if (!is_scalar($value)) {
-      return FALSE;
-    }
-    else {
-      $this->_params[$field] = $value;
-    }
-  }*/
-
-  /**
-   * Get the value of a field if set.
-   *
-   * @param string $field
-   *   The field.
-   *
-   * @return mixed
-   *   value of the field, or empty string if the field is
-   *   not set
-   */
-  /*public function _getParam($field) {
-    if (isset($this->_params[$field])) {
-      return $this->_params[$field];
-    }
-    else {
-      return '';
-    }
-  }*/
 
   /**
    * Return an array of all the details about the fields potentially required for payment fields.
@@ -239,42 +202,6 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     return $return;
   }
 
-  /**
-   * Build the default array to send to PaperlessTrans.
-   *
-   * @return array
-   *   The scaffolding for the SOAP transaction parameters.
-   */
-  public function _buildRequestDefaults() {
-    $defaults = array(
-      'req' => array(
-        'Token' => array(
-          'TerminalID' => $this->_paymentProcessor['user_name'],
-          'TerminalKey' =>  $this->_paymentProcessor['password'],
-        ),
-        'TestMode'    =>  $this->_isTestString,
-        'Currency'    =>  $this->_getParam('currencyID'),
-        'Amount'      =>  $this->_getParam('amount'),
-        //'CardPresent' =>  'False',
-        // I think these have to be configured in the gateway account.
-        'CustomFields'  => array(
-          'Field_1' =>  'InvoiceID: ' . $this->_getParam('invoiceID'),
-          'Field_2' =>  'IP Addr: ' . $this->_getParam('ip_address'),
-          /*'Field_3' =>  '',
-          'Field_4' =>  '',
-          'Field_5' =>  '',
-          'Field_6' =>  '',
-          'Field_7' =>  '',
-          'Field_8' =>  '',
-          'Field_9' =>  '',
-          'Field_10'  =>  '',*/
-        ),
-      ),
-    );
-
-    return $defaults;
-  }
-
 
   /**
    * Generate the remainder of SOAP request array for processing Credit Cards.
@@ -365,26 +292,6 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
     return $params;
   }*/
 
-  /**
-   * Map the transaction_type to the property name on the result.
-   *
-   * @return array
-   *   Array of transaction_type => resultPropertyName.
-   */
-  /*public function _mapResultFunctions() {
-    $map = array(
-      'CreateACHProfile' => 'CreateACHProfileResult',
-      'CreateCardProfile' => 'CreateCardProfileResult',
-      'ProcessACH' => 'ProcessACHResult',
-      'AuthorizeCard' => 'AuthorizeCardResult',
-      'processCard' => 'ProcessCardResult',
-      'RefundCardTransaction' => 'RefundCardTransactionResult',
-      'SettleCardAuthorization' => 'SettleCardAuthorizationResult',
-      'SetupCardSchedule' => 'SetupCardScheduleResult',
-    );
-
-    return $map;
-  }*/
 
   /**
    * Submit a payment.
