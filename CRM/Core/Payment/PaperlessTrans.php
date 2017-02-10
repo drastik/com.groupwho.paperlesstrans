@@ -9,6 +9,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   protected $_islive = NULL;
   protected $_isTestString = 'False';
   protected $_ptDateFormat = 'm/d/Y';
+  protected $_transactionType = NULL;
+  protected $_transactionTypeRecur = NULL;
 
   /**
    * We only need one instance of this object. So we use the singleton
@@ -174,10 +176,11 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       }
 
       // Success!
-      if ($approval == 'True') {
+      // Not doing anything with this id, and is not present for schedules.
+      /*if ($approval == 'True') {
         $this->_setParam('authorization_id', $run->{$resultFunction}->AuthorizationNumber);
         $return['AuthorizationNumber'] = $run->{$resultFunction}->AuthorizationNumber;
-      }
+      }*/
 
     }
     else {
@@ -348,6 +351,9 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // If they set a limit to the number of installments (end date).
     if (!empty($this->_getParam('installments'))) {
       $installments = $this->_getParam('installments');
+      // This is subtracted by 1 because CiviCRM reports status to the user as:
+      // "X installments (including this initial contribution)".
+      $installments--;
       $endTime = strtotime("+{$installments} {$frequency_unit}");
       $endDate = date($this->_ptDateFormat, $endTime);
       // Now set the soap call parameter.
@@ -448,29 +454,30 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    */
   public function doDirectPayment(&$params) {
     // Set params in our own storage.
-    foreach ($params as $field => $value) {
+    /*foreach ($params as $field => $value) {
       $this->_setParam($field, $value);
-    }
+    }*/
 
     // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('All params', $params);
+    CRM_Core_Error::debug_var('All params IN PARENT', $params);
 
     // Build defaults for request parameters.
-    $defaultParams = $this->_reqParams = self::_buildRequestDefaults();
+    //$defaultParams = $this->_reqParams = self::_buildRequestDefaults();
 
-    // Credit Card transation type.
-    $transaction_type = 'processCard';
+    // Transaction type.
+    $transaction_type = $this->_transactionType;
+    CRM_Core_Error::debug_var('Transaction Type', $transaction_type);
 
     // Switch / if for Credit Card vs ACH.
-    $processParams = self::_processCardFields();
+    //$processParams = self::_processCardFields();
 
     // Merge the defaults with current processParams.
-    $this->_reqParams = array_merge_recursive($defaultParams, $processParams);
+    //$this->_reqParams = array_merge_recursive($defaultParams, $processParams);
 
     // Recurring payments.
     if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
-      // Credit Card transation type.
-      $transaction_type = 'SetupCardSchedule';
+      // Transaction type.
+      $transaction_type = $this->_transactionTypeRecur;
 
       $result = $this->doRecurPayment();
       //return $params;
@@ -501,15 +508,16 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       $params['payment_status_id'] = 1;
 
       if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
+        $is_ach = $this->_transactionTypeRecur == 'SetupACHSchedule' ? 1 : 0;
         $query_params = array(
           1 => array($this->_getParam('pt_profile_number'), 'String'),
           2 => array($_SERVER['REMOTE_ADDR'], 'String'),
-          3 => array(0, 'Integer'),
+          3 => array($is_ach, 'Integer'),
           4 => array($params['contactID'], 'Integer'),
           5 => array($this->_getParam('email'), 'String'),
           6 => array($params['contributionRecurID'], 'Integer'),
         );
-        CRM_Core_DAO::executeQuery("INSERT INTO civicrm_iats_customer_codes
+        CRM_Core_DAO::executeQuery("INSERT INTO civicrm_paperlesstrans_profilenumbers
           (profile_number, ip, is_ach, cid, email, recur_id)
           VALUES (%1, %2, %3, %4, %5, %6)", $query_params);
       }
@@ -519,6 +527,10 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     CRM_Core_Error::debug_var('Result in doDirectPayment', $result);
 
     return $params;
+  }
+
+  public function _process_doDirectPayment(&$params) {
+
   }
 
   /**
