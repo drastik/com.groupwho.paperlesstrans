@@ -103,17 +103,32 @@ class CRM_Core_Payment_PaperlessTransACH extends CRM_Core_Payment_PaperlessTrans
    */
   public function _processACHFields($reqParams = array()) {
     //$full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
-    $country = civicrm_api3('Country', 'get', array('id' => $this->_getParam('country_id')));
-    $country_code = $country['values'][$this->_getParam('country_id')]['iso_code'];
+
+    // Fix CiviCRM odd behavior.
+    // In contributions, country is the iso_code, in updates it is the full name.
+    if (!empty($this->_getParam('country_id'))) {
+      $country = civicrm_api3('Country', 'get', array('id' => $this->_getParam('country_id')));
+      $country_code = $country['values'][$this->_getParam('country_id')]['iso_code'];
+    }
+    else {
+      $country_code = $this->_getParam('country');
+    }
 
     // Requires January 2017+ version of CiviCRM api.
     //$state = civicrm_api3('StateProvince', 'get', array('id' => $this->_getParam('state_province_id')));
     //$state_code = $country['values'][$this->_getParam('state_province_id')]['abbreviation'];
 
-    $state_code = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_StateProvince',
-      $this->_getParam('state_province_id'),
-      'abbreviation'
-    );
+    // Fix CiviCRM odd behavior.
+    // In contributions, state_province is the iso_code, in updates it is the full name.
+    if (!empty($this->_getParam('state_province_id'))) {
+      $state_code = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_StateProvince',
+        $this->_getParam('state_province_id'),
+        'abbreviation'
+      );
+    }
+    else {
+      $state_code = $this->_getParam('state_province');
+    }
 
     $params = array(
       'req' => array(

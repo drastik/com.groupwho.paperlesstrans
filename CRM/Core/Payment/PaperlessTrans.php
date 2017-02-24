@@ -455,8 +455,6 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
    *   The result in a nice formatted array (or an error object).
    */
   public function doDirectPayment(&$params) {
-    // @TODO Debugging - remove me.
-    //CRM_Core_Error::debug_var('All params', $params);
     if ($this->_getParam('currencyID') != 'USD') {
       $error_message = 'Only USD is supported in PaperlessTrans.';
       echo $error_message . '<p>';
