@@ -5,6 +5,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   protected $_mode = NULL;
   protected $_params = array();
   protected $_resultFunctionsMap = array();
+  protected $_frequencyMap = array();
   protected $_reqParams = array();
   protected $_islive = NULL;
   protected $_isTestString = 'False';
@@ -126,8 +127,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   public function _soapTransaction($transaction_type = '', $params = array()) {
     // Don't want to assume anything here.  Must be passed.
     if (empty($transaction_type)) {
-      $return['error'] = self::error(1, 'No $transaction_type passed to _soapTransaction!');
-      return $return;
+      return self::error(2, 'No $transaction_type passed to _soapTransaction!');
     }
 
     // Passing $params to this function may be useful later.
@@ -151,7 +151,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     $return['ResponseCode'] = $run->{$resultFunction}->ResponseCode;
 
     // @TODO Debugging - remove me.
-    CRM_Core_Error::debug_var('Paperless SOAP resultFunction', $run->{$resultFunction});
+    //CRM_Core_Error::debug_var('Paperless SOAP resultFunction', $run->{$resultFunction});
 
     if ($run->{$resultFunction}->ResponseCode == 0) {
       $this->_setParam('trxn_id', $run->{$resultFunction}->TransactionID);
@@ -184,7 +184,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     }
     else {
       // Error message.
-      $return['error'] = self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
+      return self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
     }
 
     return $return;
@@ -253,26 +253,14 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // [installments] => 10
     $frequency_unit = $this->_getParam('frequency_unit');
 
-    $frequency_map = array(
-      'week' => '52',
-      //'Semi-Weekly' => '26',
-      //'Bi-Monthly' => '24',
-      'month' => '12',
-      //'Quarterly' => '4',
-      //'Bi-Annually' => '2',
-      'year' => '1',
-    );
-
     // Map CiviCRM's frequency name to Paperless's.
-    if (!empty($frequency_map[$frequency_unit])) {
-      $frequency = $frequency_map[$frequency_unit];
-    }
-    else {
+    if (empty($this->_frequencyMap[$frequency_unit])) {
       $error_message = 'Could not determine recurring frequency.  Please try another setting.';
       CRM_Core_Error::debug_log_message($error_message);
       echo $error_message . '<p>';
       return FALSE;
     }
+    $frequency = $this->_frequencyMap[$frequency_unit];
 
     // No longer required because we block installment setting.  Too many issues.
     //$frequency = self::_determineFrequency();
@@ -310,6 +298,56 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     return $params;
   }
 
+  /**
+   * Prepare the fields for recurring subscription update requests.
+   *
+   * @param array $additional_params
+   *   Array of values from the form.
+   *
+   * @return array
+   *   The array of additional SOAP request params.
+   */
+  public function _processUpdateFields($additional_params = array()) {
+    $full_name = $this->_getParam('first_name') . ' ' . $this->_getParam('last_name');
+    $frequency_unit = $additional_params['frequency_unit'];
+    $original_time = strtotime($additional_params['start_date']);
+
+    // Map CiviCRM's frequency name to Paperless's.
+    if (empty($this->_frequencyMap[$frequency_unit])) {
+      $error_message = 'Could not determine recurring frequency.  Please try another setting.';
+      CRM_Core_Error::debug_log_message($error_message);
+      echo $error_message . '<p>';
+      return FALSE;
+    }
+    $frequency = $this->_frequencyMap[$frequency_unit];
+
+    // Set up the soap call parameters for recurring.
+    $params = array(
+      'req' => array(
+        // This is for updating existing subscriptions.
+        'ProfileNumber' =>  $additional_params['profile_number'],
+        'ListingName' =>  $full_name,
+        'Frequency'   =>  $frequency,
+        'StartDateTime' =>  date($this->_ptDateFormat, $original_time),
+        'Memo'      =>  'CiviCRM recurring charge.',
+      ),
+    );
+
+    // If they set a limit to the number of installments (end date).
+    if (!empty($additional_params['installments'])) {
+      $installments = $additional_params['installments'];
+      // This is subtracted by 1 because CiviCRM reports status to the user as:
+      // "X installments (including this initial contribution)".
+      $installments--;
+      $endTime = strtotime("+{$installments} {$frequency_unit}", $original_time);
+      $endDate = date($this->_ptDateFormat, $endTime);
+      // Now set the soap call parameter.
+      $params['req']['EndingDateTime'] = $endDate;
+    }
+
+    return $params;
+  }
+
   // No longer required because we block installment setting.  Too many issues.
   /*public function _determineFrequency() {
     $frequency = FALSE;
@@ -335,16 +373,6 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       }
     }
 
-    $frequency_map = array(
-      'Weekly' => '52',
-      'Semi-Weekly' => '26',
-      'Bi-Monthly' => '24',
-      'month' => '12',
-      'Quarterly' => '4',
-      'Bi-Annually' => '2',
-      'Annually' => '1',
-    );
-
     return $frequency;
   }*/
 
@@ -367,6 +395,33 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       'SetupACHSchedule' => 'SetupACHScheduleResult',
       'UpdateCardSchedule' => 'UpdateCardScheduleResult',
       'UpdateACHSchedule' => 'UpdateACHScheduleResult',
+    );
+
+    return $map;
+  }
+
+  /**
+   * Paperless's recurring subscription frequency map:
+   * - '52' => 'Weekly'
+   * - '26' => 'Semi-Weekly'
+   * - '24' => 'Bi-Monthly'
+   * - '12' => 'Monthly'
+   * - '4'  => 'Quarterl'
+   * - '2'  => 'Bi-Annualy'
+   * - '1'  => 'Annually'
+   *
+   * @return array
+   *   Array of CiviCRM => Paperless frequency values.
+   */
+  public function _mapFrequency() {
+    $map = array(
+      'week' => '52',
+      //'Semi-Weekly' => '26',
+      //'Bi-Monthly' => '24',
+      'month' => '12',
+      //'Quarterly' => '4',
+      //'Bi-Annually' => '2',
+      'year' => '1',
     );
 
     return $map;
@@ -402,6 +457,12 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
   public function doDirectPayment(&$params) {
     // @TODO Debugging - remove me.
     //CRM_Core_Error::debug_var('All params', $params);
+    if ($this->_getParam('currencyID') != 'USD') {
+      $error_message = 'Only USD is supported in PaperlessTrans.';
+      echo $error_message . '<p>';
+      CRM_Core_Error::debug_log_message($error_message);
+      return self::error(2, $error_message);
+    }
 
     // Transaction type.
     $transaction_type = $this->_transactionType;
@@ -421,14 +482,11 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     $result = self::_soapTransaction($transaction_type, $this->_reqParams);
 
     // Handle errors.
-    if (is_a($result, 'CRM_Core_Error') || !empty($result['error'])) {
+    if (is_a($result, 'CRM_Core_Error')) {
       $error_message = 'There was an error with the transaction.  Please check logs: ';
       echo $error_message . '<p>';
-      if (!empty($result['error'])) {
-        $error_message .= $result['error'];
-      }
       CRM_Core_Error::debug_log_message($error_message);
-      return FALSE;
+      return $result;
     }
 
     if (!empty($result['trxn_id'])) {
@@ -438,6 +496,7 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
       // Payment success for CiviCRM versions >= 4.6.6.
       $params['payment_status_id'] = 1;
 
+      // Recurring contributions.
       if (!empty($params['is_recur']) && !empty($params['contributionRecurID'])) {
         $is_ach = $this->_transactionTypeRecur == 'SetupACHSchedule' ? 1 : 0;
         $query_params = array(
@@ -453,6 +512,8 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
           VALUES (%1, %2, %3, %4, %5, %6)", $query_params);
       }
     }
+
+    //CRM_Core_Error::debug_var('ALL params in doDirect:', $params);
 
     return $params;
   }
@@ -477,34 +538,56 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
 
 
   /**
-   * Update recurring billing subscription.
+   * Prepare recurring billing subscription update vars.
    *
    * @param string $message
    * @param array $params
    *
    * @return bool|object
    */
-  public function updateSubscriptionBillingInfo(&$message = '', $params = array()) {
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo message', $message);
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo All params', $params);
-
-    $dao = CRM_Core_DAO::executeQuery("SELECT cr.payment_processor_id, pt.profile_number, pt.cid
+  public function updateSubscriptionBillingInfoPrep(&$message = '', $params = array()) {
+    // Since the recurring contrib ID is not passed in any other variable,
+    // we must pull it out of entry URL :(.
+    if (empty($params['contribution_recur_id'])) {
+      parse_str(htmlspecialchars_decode($params['entryURL']), $urlParams);
+      // If we couldn't get the recurring contribution ID.
+      if (empty($urlParams['crid'])) {
+        $error_message = 'Could not determine recurring contribution ID.  Please report this issue.';
+        CRM_Core_Error::debug_log_message($error_message);
+        echo $error_message . '<p>';
+        return self::error(2, $error_message);
+      }
+      $crid = $urlParams['crid'];
+    }
+    else {
+      $crid = $params['contribution_recur_id'];
+    }
+    // Query their recurring contribution values.
+    $query_params = array(1 => array($crid, 'Integer'));
+    $query = "SELECT cr.frequency_unit, cr.installments, cr.start_date, pt.profile_number
       FROM civicrm_contribution_recur cr
       LEFT JOIN civicrm_paperlesstrans_profilenumbers pt ON cr.id = pt.recur_id
-      WHERE cr.id=%1", array(1 => array($params['crid'], 'Int')));
-    $dao->fetch();
+      WHERE cr.id = %1";
 
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo dao', $dao);
+    $query_result = CRM_Core_DAO::executeQuery($query, $query_params);
 
-    /*"ProfileNumber" =>  "1055105",
-    "ListingName" =>  "Jane and Jane Doe",
-    "Frequency"   =>  "12",                                     //Required Field
-    "StartDateTime" =>  "12/01/2013",                                 //Required Field
-    "EndingDateTime"=>  "12/01/2019",
-    "Amount"    =>  "1.00",                                     //Required Field
-    "Currency"    =>  "USD",                                      //Required Field
-    "Memo"      =>  "Membership Fee",*/
-    return TRUE;
+    while ($query_result->fetch()) {
+      $additional_req_params = array(
+        'profile_number' =>  $query_result->profile_number,
+        'frequency_unit' => $query_result->frequency_unit,
+        'installments' => $query_result->installments,
+        'start_date' => $query_result->start_date,
+      );
+    }
+
+    if (empty($additional_req_params['profile_number'])) {
+      $error_message = 'Could not find subscription profileNumber in database.';
+      CRM_Core_Error::debug_log_message($error_message);
+      echo $error_message . '<p>';
+      return self::error(2, $error_message);
+    }
+
+    return $additional_req_params;
   }
 
 }

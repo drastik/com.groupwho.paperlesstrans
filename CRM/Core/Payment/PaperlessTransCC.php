@@ -29,6 +29,8 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
     $this->_processorName = ts('PaperlessTrans');
     // Array of the result function names by Soap request function name.
     $this->_resultFunctionsMap = self::_mapResultFunctions();
+    $this->_frequencyMap = self::_mapFrequency();
+
     // Set transaction type for Soap call.
     $this->_transactionType = 'processCard';
     $this->_transactionTypeRecur = 'SetupCardSchedule';
@@ -49,6 +51,17 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
    */
   public function _processCardFields($reqParams = array()) {
     $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
+    $country = civicrm_api3('Country', 'get', array('id' => $this->_getParam('country_id')));
+    $country_code = $country['values'][$this->_getParam('country_id')]['iso_code'];
+
+    // Requires January 2017+ version of CiviCRM api.
+    //$state = civicrm_api3('StateProvince', 'get', array('id' => $this->_getParam('state_province_id')));
+    //$state_code = $country['values'][$this->_getParam('state_province_id')]['abbreviation'];
+
+    $state_code = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_StateProvince',
+      $this->_getParam('state_province_id'),
+      'abbreviation'
+    );
 
     $params = array(
       'req' => array(
@@ -62,9 +75,9 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
           'Address'   => array(
             'Street'  =>  $this->_getParam('street_address'),
             'City'    =>  $this->_getParam('city'),
-            'State'   =>  $this->_getParam('state_province'),
+            'State'   =>  $state_code,
             'Zip'     =>  $this->_getParam('postal_code'),
-            'Country' =>  $this->_getParam('country'),
+            'Country' =>  $country_code,
           ),
           /*'Identification'=> array(
             'IDType'  =>  '1',
@@ -83,6 +96,11 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
         ),
       ),
     );
+
+    // Add the ProfileNumber to update existing subscription.
+    /*if (!empty($reqParams['ProfileNumber'])) {
+      $params['req']['ProfileNumber'] = $reqParams['ProfileNumber'];
+    }*/
 
     return $params;
   }
@@ -130,25 +148,41 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
    * @return bool|object
    */
   public function updateSubscriptionBillingInfo(&$message = '', $params = array()) {
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo message', $message);
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo All params', $params);
+    // Build generic params, fetching contrib recur id and other values.
+    $additional_req_params = parent::updateSubscriptionBillingInfoPrep($message, $params);
+    if (empty($additional_req_params) || is_a($additional_req_params, 'CRM_Core_Error')) {
+      return self::error(2, $additional_req_params);
+    }
 
-    $dao = CRM_Core_DAO::executeQuery("SELECT cr.payment_processor_id, pt.profile_number, pt.cid
-      FROM civicrm_contribution_recur cr
-      LEFT JOIN civicrm_paperlesstrans_profilenumbers pt ON cr.id = pt.recur_id
-      WHERE cr.id=%1", array(1 => array($params['crid'], 'Int')));
-    $dao->fetch();
+    // Set params in our own storage.
+    foreach ($params as $field => $value) {
+      $this->_setParam($field, $value);
+    }
 
-    CRM_Core_Error::debug_var('updateSubscriptionBillingInfo dao', $dao);
+    // Build defaults for request parameters.
+    $defaultParams = $this->_reqParams = self::_buildRequestDefaults();
 
-    /*"ProfileNumber" =>  "1055105",
-    "ListingName" =>  "Jane and Jane Doe",
-    "Frequency"   =>  "12",                                     //Required Field
-    "StartDateTime" =>  "12/01/2013",                                 //Required Field
-    "EndingDateTime"=>  "12/01/2019",
-    "Amount"    =>  "1.00",                                     //Required Field
-    "Currency"    =>  "USD",                                      //Required Field
-    "Memo"      =>  "Membership Fee",*/
+    // Process card-related fields.
+    $processParams = self::_processCardFields($additional_req_params);
+
+    // Handle the update-request specific fields.
+    $updateParams = parent::_processUpdateFields($additional_req_params);
+
+    // Merge the defaults with current processParams.
+    $this->_reqParams = array_merge_recursive($defaultParams, $processParams, $updateParams);
+
+    // Run the SOAP transaction.
+    $result = parent::_soapTransaction('UpdateCardSchedule', $this->_reqParams);
+
+    // Handle errors.
+    if (is_a($result, 'CRM_Core_Error')) {
+      $error_message = 'There was an error with the transaction.  Please check logs: ';
+      echo $error_message . '<p>';
+      CRM_Core_Error::debug_log_message($error_message);
+      return $result;
+    }
+
+    $message = "{$result['ResponseCode']}: {$result['ProfileNumber']}";
     return TRUE;
   }
 
