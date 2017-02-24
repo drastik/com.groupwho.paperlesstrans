@@ -153,38 +153,49 @@ class CRM_Core_Payment_PaperlessTrans extends CRM_Core_Payment {
     // @TODO Debugging - remove me.
     //CRM_Core_Error::debug_var('Paperless SOAP resultFunction', $run->{$resultFunction});
 
-    if ($run->{$resultFunction}->ResponseCode == 0) {
-      $this->_setParam('trxn_id', $run->{$resultFunction}->TransactionID);
-      $return['trxn_id'] = $run->{$resultFunction}->TransactionID;
+    // Non-ResponseCode 0 from Paperless means there was an error.
+    if ($run->{$resultFunction}->ResponseCode != 0) {
+      return self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
+    }
 
-      // Different propertyName for Card vs ACH processing.
-      // Determine approval per transaction type.
-      $approval = 'False';
-      if ($transaction_type == 'ProcessACH') {
+    // We should have a successful transaction.  Few more things to ensure.
+    $this->_setParam('trxn_id', $run->{$resultFunction}->TransactionID);
+    $return['trxn_id'] = $run->{$resultFunction}->TransactionID;
+
+    // Different propertyName for Card vs ACH vs Recur processing.
+    // Determine approval per transaction type.
+    $approval = 'False';
+    switch ($transaction_type) {
+      // Credit Card transaction.
+      case 'processCard':
+        $approval = $run->{$resultFunction}->IsApproved;
+        break;
+
+      // ACH/EBT transaction.
+      case 'ProcessACH':
         $approval = $run->{$resultFunction}->IsAccepted;
-      }
-      // If setting up recurring payment or profile, we have different returns.
-      elseif (strstr($transaction_type, 'Setup') || strstr($transaction_type, 'Create')) {
-        if (!empty($run->{$resultFunction}->ProfileNumber)) {
-          $this->_setParam('pt_profile_number', $run->{$resultFunction}->ProfileNumber);
+        break;
+
+      // Others.
+      default:
+        // Create profile or setup recurring billing subscription.
+        if (strstr($transaction_type, 'Setup') || strstr($transaction_type, 'Create')) {
+          if (!empty($run->{$resultFunction}->ProfileNumber)) {
+            $this->_setParam('pt_profile_number', $run->{$resultFunction}->ProfileNumber);
+            $approval = 'True';
+          }
+        }
+
+        // Update existing schedules.
+        if (strstr($transaction_type, 'Update')) {
           $approval = 'True';
         }
-      }
-      else {
-        $approval = $run->{$resultFunction}->IsApproved;
-      }
-
-      // Success!
-      // Not doing anything with this id, and is not present for schedules.
-      /*if ($approval == 'True') {
-        $this->_setParam('authorization_id', $run->{$resultFunction}->AuthorizationNumber);
-        $return['AuthorizationNumber'] = $run->{$resultFunction}->AuthorizationNumber;
-      }*/
-
+        break;
     }
-    else {
-      // Error message.
-      return self::error($run->{$resultFunction}->ResponseCode, $run->{$resultFunction}->Message);
+
+    // Transaction was declined, or failed for other reason.
+    if ($approval == 'False') {
+      return self::error(9001, $run->{$resultFunction}->Message);
     }
 
     return $return;
