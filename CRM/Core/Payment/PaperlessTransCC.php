@@ -50,7 +50,13 @@ class CRM_Core_Payment_PaperlessTransCC extends CRM_Core_Payment_PaperlessTrans 
    *   The remainder of the SOAP transaction parameters for Credit Cards.
    */
   public function _processCardFields($reqParams = array()) {
-    $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
+    // In update requests, CiviCRM strips the billing_ portion off.
+    if (!empty($this->_getParam('billing_first_name'))) {
+      $full_name = $this->_getParam('billing_first_name') . ' ' . $this->_getParam('billing_last_name');
+    }
+    else {
+      $full_name = $this->_getParam('first_name') . ' ' . $this->_getParam('last_name');
+    }
     $country = civicrm_api3('Country', 'get', array('id' => $this->_getParam('country_id')));
     $country_code = $country['values'][$this->_getParam('country_id')]['iso_code'];
 
